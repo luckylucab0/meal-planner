@@ -9,12 +9,10 @@ denselben Slot bauen und kopiert sie in den ursprünglichen Plan zurück
 (das gerade neu generierte Plan-Wrapper wird wieder gelöscht).
 """
 
-from __future__ import annotations
-
 from datetime import date as date_type
 from typing import TYPE_CHECKING
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
@@ -23,6 +21,7 @@ from app.config import settings
 from app.database import get_db
 from app.exceptions import AgentPlanningError
 from app.models import Meal, MealHistory, MealIngredient, MealPlan, Product
+from app.rate_limit import limiter
 from app.schemas.plans import (
     IngredientRead,
     MealRead,
@@ -114,7 +113,13 @@ def _load_plan(db: Session, plan_id: int) -> MealPlan:
 
 
 @router.post("/generate", response_model=PlanRead, status_code=status.HTTP_201_CREATED)
-def generate_plan(payload: PlanGenerateRequest, db: Session = Depends(get_db)) -> PlanRead:
+@limiter.limit(
+    "3/hour",
+    error_message="Zu viele Plan-Generierungen — max. 3 pro Stunde (verhindert Token-Burn).",
+)
+def generate_plan(
+    request: Request, payload: PlanGenerateRequest, db: Session = Depends(get_db)
+) -> PlanRead:
     request = PlanRequest(
         week_start=payload.week_start,
         slots=[(s.date, s.slot) for s in payload.slots],
@@ -194,7 +199,13 @@ def delete_plan(plan_id: int, db: Session = Depends(get_db)) -> Response:
 
 
 @router.post("/{plan_id}/meals/{meal_id}/regenerate", response_model=MealRead)
-def regenerate_meal(plan_id: int, meal_id: int, db: Session = Depends(get_db)) -> MealRead:
+@limiter.limit(
+    "10/hour",
+    error_message="Zu viele Einzelmahlzeit-Regenerierungen — max. 10 pro Stunde.",
+)
+def regenerate_meal(
+    request: Request, plan_id: int, meal_id: int, db: Session = Depends(get_db)
+) -> MealRead:
     plan = _load_plan(db, plan_id)
     target = next((m for m in plan.meals if m.id == meal_id), None)
     if target is None:
