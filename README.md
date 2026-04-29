@@ -202,3 +202,9 @@ OpenAPI-Dokumentation läuft unter `http://<pi-ip>:8000/docs`.
 
 Single-User-Hobby-Projekt. Kein Multi-User-Support, keine produktiven
 Authentifizierungs-Flows. Wird im LAN hinter einer Firewall betrieben.
+
+Copyright (C) 2026 [luckylucab0](https://github.com/luckylucab0) —
+veröffentlicht unter der **GNU General Public License v3.0**.
+Siehe [LICENSE](LICENSE) für den vollständigen Lizenztext.
+Ableitungen müssen ebenfalls unter GPL v3 veröffentlicht werden und
+den ursprünglichen Copyright-Vermerk beibehalten.
