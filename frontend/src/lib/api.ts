@@ -174,3 +174,34 @@ export const deletePlan = (id: number) =>
 
 export const regenerateMeal = (planId: number, mealId: number) =>
   apiFetch<MealRead>(`/api/plans/${planId}/meals/${mealId}/regenerate`, { method: "POST" });
+
+// ───── Shopping List ───────────────────────────────────────────────────────
+
+export interface ShoppingItem {
+  product_id: number;
+  name: string;
+  category: string;
+  grams_needed: number;
+  grams_to_buy: number;
+  packs: number | null;
+  pack_size_g: number | null;
+  est_cost_chf: number | null;
+}
+
+export interface ShoppingGroup {
+  category: string;
+  label: string;
+  items: ShoppingItem[];
+}
+
+export interface ShoppingListResponse {
+  plan_id: number;
+  week_start: string;
+  groups: ShoppingGroup[];
+  total_cost_chf: number | null;
+}
+
+export const getShoppingList = (planId: number) =>
+  apiFetch<ShoppingListResponse>(`/api/shopping-list/${planId}`);
+
+export const shoppingListTxtUrl = (planId: number) => `/api/shopping-list/${planId}.txt`;
