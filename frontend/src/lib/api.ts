@@ -104,3 +104,73 @@ export const lookupProduct = (name: string, force_remote = false) =>
     method: "POST",
     body: JSON.stringify({ name, force_remote }),
   });
+
+// ───── Plans ───────────────────────────────────────────────────────────────
+
+export type Slot = "lunch" | "dinner";
+
+export interface IngredientRead {
+  product_id: number;
+  name: string;
+  grams: number;
+  category: string;
+  est_price_chf: number | null;
+}
+
+export interface MealRead {
+  id: number;
+  date: string;
+  slot: Slot;
+  title: string;
+  instructions: string;
+  prep_time_min: number;
+  macros: { kcal: number; protein_g: number; carbs_g: number; fat_g: number; incomplete: boolean };
+  estimated_cost_chf: number | null;
+  uses_leftovers_from_id: number | null;
+  ingredients: IngredientRead[];
+}
+
+export interface PlanRead {
+  id: number;
+  week_start: string;
+  generated_at: string;
+  notes: string | null;
+  weekly_totals: { avg_kcal?: number | null; avg_protein_g?: number | null; total_cost_chf?: number | null };
+  meals: MealRead[];
+}
+
+export interface PlanSummary {
+  id: number;
+  week_start: string;
+  generated_at: string;
+  notes: string | null;
+  weekly_totals: PlanRead["weekly_totals"];
+  meals_count: number;
+}
+
+export interface SlotRequest {
+  date: string;
+  slot: Slot;
+}
+
+export interface PlanGenerateRequest {
+  week_start: string;
+  slots: SlotRequest[];
+  notes?: string;
+}
+
+export const generatePlan = (payload: PlanGenerateRequest) =>
+  apiFetch<PlanRead>("/api/plans/generate", { method: "POST", body: JSON.stringify(payload) });
+
+export const getCurrentPlan = () => apiFetch<PlanRead | null>("/api/plans/current");
+
+export const getPlan = (id: number) => apiFetch<PlanRead>(`/api/plans/${id}`);
+
+export const listPlanHistory = (limit = 10) =>
+  apiFetch<PlanSummary[]>(`/api/plans/history?limit=${limit}`);
+
+export const deletePlan = (id: number) =>
+  apiFetch<void>(`/api/plans/${id}`, { method: "DELETE" });
+
+export const regenerateMeal = (planId: number, mealId: number) =>
+  apiFetch<MealRead>(`/api/plans/${planId}/meals/${mealId}/regenerate`, { method: "POST" });
