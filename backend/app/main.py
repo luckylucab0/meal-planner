@@ -14,6 +14,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from loguru import logger
 
+from app.api import plans as plans_api
 from app.api import preferences as preferences_api
 from app.api import products as products_api
 from app.config import settings
@@ -45,6 +46,7 @@ async def domain_error_handler(_request: Request, exc: MealPlannerError) -> JSON
 
 app.include_router(preferences_api.router)
 app.include_router(products_api.router)
+app.include_router(plans_api.router)
 
 
 @app.get("/api/health")
