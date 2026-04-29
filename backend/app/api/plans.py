@@ -250,5 +250,6 @@ def regenerate_meal(
     db.commit()
 
     refreshed = db.get(Meal, target.id)
-    assert refreshed is not None
+    if refreshed is None:
+        raise HTTPException(status_code=500, detail="Mahlzeit nach Update nicht mehr auffindbar.")
     return _meal_to_read(db, refreshed)

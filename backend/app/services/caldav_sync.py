@@ -79,9 +79,11 @@ def sync_plan_to_icloud(
     bei Konfig-/Auth-/Netz-Problemen.
     """
     username, password = _credentials(settings_row)
+    # Username nur maskiert loggen, um versehentliche Credential-Leaks in Logs zu vermeiden.
+    masked = username[:2] + "***" if len(username) > 2 else "***"
     logger.info(
         "CalDAV-Sync startet (user={}, calendar={})",
-        username,
+        masked,
         settings_row.caldav_calendar_name,
     )
 
