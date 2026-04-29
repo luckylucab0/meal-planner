@@ -1,28 +1,68 @@
 """Alembic-Environment.
 
-In Schritt 3 vollständig konfiguriert; aktuell Platzhalter, damit `alembic init`
-nicht erneut ausgeführt werden muss.
+Zieht die Datenbank-URL aus `app.config.settings`, sodass das Container-Setup
+und lokale Tests dieselbe Konfigurations-Quelle nutzen. Importiert
+`app.models` als Seiteneffekt, damit `Base.metadata` alle Tabellen kennt
+(Autogenerate-Voraussetzung).
+
+Aktiviert `render_as_batch=True` für die SQLite-freundliche Migration von
+ALTER-Statements (SQLite kann diese sonst nur eingeschränkt).
 """
+
+from __future__ import annotations
 
 from logging.config import fileConfig
 
+from sqlalchemy import engine_from_config, pool
+
 from alembic import context
 
+# Wichtig: `app.models` importiert alle Tabellen. Reihenfolge zählt — vor dem
+# Zugriff auf `Base.metadata`.
+from app import models  # noqa: F401
+from app.config import settings
+from app.database import Base
+
 config = context.config
+config.set_main_option("sqlalchemy.url", settings.database_url)
+
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-target_metadata = None
+target_metadata = Base.metadata
 
 
 def run_migrations_offline() -> None:
-    """Offline-Modus — wird in Schritt 3 implementiert."""
-    raise NotImplementedError("Alembic-Offline-Mode noch nicht konfiguriert.")
+    """Migrationen ohne aktive DB-Verbindung (SQL-Output)."""
+    url = config.get_main_option("sqlalchemy.url")
+    context.configure(
+        url=url,
+        target_metadata=target_metadata,
+        literal_binds=True,
+        dialect_opts={"paramstyle": "named"},
+        render_as_batch=True,
+    )
+    with context.begin_transaction():
+        context.run_migrations()
 
 
 def run_migrations_online() -> None:
-    """Online-Modus — wird in Schritt 3 implementiert."""
-    raise NotImplementedError("Alembic-Online-Mode noch nicht konfiguriert.")
+    """Migrationen direkt gegen die konfigurierte Datenbank."""
+    connectable = engine_from_config(
+        config.get_section(config.config_ini_section, {}),
+        prefix="sqlalchemy.",
+        poolclass=pool.NullPool,
+    )
+
+    with connectable.connect() as connection:
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            render_as_batch=True,
+            compare_type=True,
+        )
+        with context.begin_transaction():
+            context.run_migrations()
 
 
 if context.is_offline_mode():
