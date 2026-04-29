@@ -28,7 +28,9 @@ class PlanGenerateRequest(BaseModel):
 
     week_start: date_type
     slots: list[SlotRequest] = Field(min_length=1, max_length=14)
-    notes: str | None = None
+    # User-Eingabe wird in den LLM-Prompt eingebettet — Länge begrenzt
+    # gegen DoS/Token-Burn und um den Injektions-Angriffsraum klein zu halten.
+    notes: str | None = Field(default=None, max_length=2000)
 
 
 class IngredientRead(BaseModel):
