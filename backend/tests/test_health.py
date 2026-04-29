@@ -1,13 +1,9 @@
-"""Smoke-Test für den Health-Endpoint — stellt sicher, dass der Skeleton-Build hochkommt."""
+"""Smoke-Test für den Health-Endpoint."""
 
 from fastapi.testclient import TestClient
 
-from app.main import app
 
-client = TestClient(app)
-
-
-def test_health_endpoint_returns_ok() -> None:
+def test_health_endpoint_returns_ok(client: TestClient) -> None:
     response = client.get("/api/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
