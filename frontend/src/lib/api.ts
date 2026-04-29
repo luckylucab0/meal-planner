@@ -236,3 +236,34 @@ export const getMacrosRange = (from?: string, to?: string) => {
 // ───── Calendar ────────────────────────────────────────────────────────────
 
 export const planIcsUrl = (planId: number) => `/api/calendar/${planId}.ics`;
+
+// ───── Settings ────────────────────────────────────────────────────────────
+
+export interface AppSettings {
+  caldav_enabled: boolean;
+  caldav_username: string | null;
+  caldav_calendar_name: string;
+  caldav_password_set: boolean;
+}
+
+export interface AppSettingsUpdate {
+  caldav_enabled: boolean;
+  caldav_username: string | null;
+  caldav_calendar_name: string;
+  caldav_password: string | null; // null = bestehenden Wert behalten
+}
+
+export interface CalDavSyncResult {
+  created: number;
+  updated: number;
+  plan_id: number;
+  calendar_name: string;
+}
+
+export const getAppSettings = () => apiFetch<AppSettings>("/api/settings");
+
+export const putAppSettings = (payload: AppSettingsUpdate) =>
+  apiFetch<AppSettings>("/api/settings", { method: "PUT", body: JSON.stringify(payload) });
+
+export const syncPlanToApple = (planId: number) =>
+  apiFetch<CalDavSyncResult>(`/api/calendar/sync-apple/${planId}`, { method: "POST" });

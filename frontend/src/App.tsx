@@ -5,7 +5,7 @@ import Products from "./pages/Products";
 import WeekPlan from "./pages/WeekPlan";
 import ShoppingList from "./pages/ShoppingList";
 import History from "./pages/History";
-import Settings from "./pages/Settings";
+import SettingsPage from "./pages/Settings";
 
 const navItems = [
   { to: "/", label: "Dashboard" },
@@ -48,7 +48,7 @@ export default function App() {
           <Route path="/preferences" element={<Preferences />} />
           <Route path="/products" element={<Products />} />
           <Route path="/history" element={<History />} />
-          <Route path="/settings" element={<Settings />} />
+          <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </main>
     </div>
