@@ -18,6 +18,7 @@ from app.api import plans as plans_api
 from app.api import preferences as preferences_api
 from app.api import products as products_api
 from app.api import shopping_list as shopping_list_api
+from app.api import stats as stats_api
 from app.config import settings
 from app.exceptions import MealPlannerError
 from app.logging_setup import setup_logging
@@ -49,6 +50,7 @@ app.include_router(preferences_api.router)
 app.include_router(products_api.router)
 app.include_router(plans_api.router)
 app.include_router(shopping_list_api.router)
+app.include_router(stats_api.router)
 
 
 @app.get("/api/health")

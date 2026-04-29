@@ -205,3 +205,30 @@ export const getShoppingList = (planId: number) =>
   apiFetch<ShoppingListResponse>(`/api/shopping-list/${planId}`);
 
 export const shoppingListTxtUrl = (planId: number) => `/api/shopping-list/${planId}.txt`;
+
+// ───── Stats ───────────────────────────────────────────────────────────────
+
+export interface DailyMacros {
+  date: string;
+  kcal: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  meals_count: number;
+}
+
+export interface MacrosRange {
+  from: string;
+  to: string;
+  kcal_target: number;
+  protein_target_g: number;
+  days: DailyMacros[];
+}
+
+export const getMacrosRange = (from?: string, to?: string) => {
+  const params = new URLSearchParams();
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
+  const qs = params.toString();
+  return apiFetch<MacrosRange>(`/api/stats/macros${qs ? "?" + qs : ""}`);
+};
