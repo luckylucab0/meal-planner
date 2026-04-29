@@ -86,8 +86,8 @@ dem ersten Build vorhanden sein:
 # apache2-utils installieren (einmalig, auf dem Pi oder lokal)
 sudo apt-get install -y apache2-utils
 
-# .htpasswd mit bcrypt erzeugen (-B)
-htpasswd -B -c frontend/nginx.htpasswd DEIN_USERNAME
+# .htpasswd mit bcrypt erzeugen (-B); beliebigen Username wählen
+htpasswd -B -c frontend/nginx.htpasswd USERNAME
 # Passwort wird interaktiv abgefragt. Die Datei liegt lokal und ist via
 # .gitignore vom Repo ausgeschlossen.
 ```
@@ -96,9 +96,10 @@ Alternativ mit Python (kein `htpasswd` nötig):
 
 ```bash
 python3 -c "
-import bcrypt, getpass
+import bcrypt, getpass, sys
+u = input('Username: ')
 pw = getpass.getpass('Passwort: ').encode()
-print('DEIN_USERNAME:' + bcrypt.hashpw(pw, bcrypt.gensalt(12)).decode())
+print(u + ':' + bcrypt.hashpw(pw, bcrypt.gensalt(12)).decode())
 " > frontend/nginx.htpasswd
 ```
 
