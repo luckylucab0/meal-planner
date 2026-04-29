@@ -45,8 +45,15 @@ def list_products(
 ) -> list[Product]:
     stmt = select(Product)
     if q:
-        like = f"%{q.lower()}%"
-        stmt = stmt.where(or_(func.lower(Product.name).like(like), Product.name_normalized.like(like)))
+        # Sonderzeichen escapen, damit User-Input nicht als SQL-LIKE-Wildcard wirkt.
+        safe_q = q.lower().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        like = f"%{safe_q}%"
+        stmt = stmt.where(
+            or_(
+                func.lower(Product.name).like(like, escape="\\"),
+                Product.name_normalized.like(like, escape="\\"),
+            )
+        )
     if category:
         stmt = stmt.where(Product.category == category)
     stmt = stmt.order_by(Product.name).limit(limit).offset(offset)

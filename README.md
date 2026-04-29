@@ -77,15 +77,36 @@ cp .env.example .env
 python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 ```
 
-### 3. Stack starten
+### 3. Basic-Auth-Passwort erzeugen
+
+nginx schützt die gesamte App mit HTTP Basic Auth. Die Datei muss vor
+dem ersten Build vorhanden sein:
 
 ```bash
+# apache2-utils / httpd-tools installieren (einmalig)
+sudo apt-get install -y apache2-utils   # Debian/Ubuntu
+# oder: sudo yum install -y httpd-tools  # RHEL/Fedora
+
+# .htpasswd mit bcrypt erstellen (-B)
+htpasswd -B -c frontend/nginx.htpasswd DEIN_USERNAME
+# Passwort wird interaktiv abgefragt; Datei landet lokal, nicht im Repo.
+```
+
+> Das Backend ist **nicht** mehr direkt über Port 8000 erreichbar —
+> alle Anfragen laufen ausschliesslich durch nginx (Port 3000).
+
+### 4. Stack starten
+
+```bash
+# Daten-Verzeichnis mit korrekten Permissions anlegen (UID 1000 = appuser im Container)
+mkdir -p data/db data/logs
+chown -R 1000:1000 data/
+
 docker compose up -d --build
 ```
 
-- Backend läuft auf `http://<pi-ip>:8000`
-- Frontend auf `http://<pi-ip>:3000`
-- Health-Check: `curl http://<pi-ip>:8000/api/health` → `{"status":"ok"}`
+- Frontend + Proxy auf `http://<pi-ip>:3000` (Basic-Auth erforderlich)
+- Health-Check (ohne Auth): `curl http://<pi-ip>:3000/api/health` → `{"status":"ok"}`
 
 Beim ersten Start läuft die Alembic-Migration automatisch — siehe
 „Erst-Setup" weiter unten.

@@ -252,3 +252,83 @@ def test_agent_dispatches_calculate_nutrition(db) -> None:
     last_user_msg = third_call["messages"][-1]
     assert last_user_msg["role"] == "user"
     assert any(item["type"] == "tool_result" for item in last_user_msg["content"])
+
+
+def test_agent_rejects_slot_not_in_request(db) -> None:
+    """Agent darf keinen Slot speichern, der nicht im ursprünglichen Request war."""
+    quinoa_id = _seed(db)
+
+    fake = FakeAnthropic(
+        [
+            _response(
+                [
+                    _tool_use(
+                        "t1",
+                        "save_meal_plan",
+                        {
+                            "week_start": "2026-05-04",
+                            "meals": [
+                                {
+                                    # lunch war angefragt, aber der Agent speichert dinner
+                                    "date": "2026-05-04",
+                                    "slot": "dinner",
+                                    "title": "Ungebetenes Abendessen",
+                                    "instructions": "Kochen.",
+                                    "prep_time_min": 10,
+                                    "ingredients": [{"product_id": quinoa_id, "grams": 80}],
+                                }
+                            ],
+                        },
+                    )
+                ],
+                stop_reason="tool_use",
+            ),
+            _response([_text("Gespeichert.")], stop_reason="end_turn"),
+        ]
+    )
+
+    agent = MealAgent(client=fake, db=db, model="test-model")
+    with pytest.raises(AgentPlanningError, match="nicht angeforderten Slot"):
+        agent.generate_plan(
+            PlanRequest(week_start=date(2026, 5, 4), slots=[(date(2026, 5, 4), "lunch")])
+        )
+
+
+def test_agent_rejects_slot_wrong_date(db) -> None:
+    """Agent darf kein Datum speichern, das nicht im Request war."""
+    quinoa_id = _seed(db)
+
+    fake = FakeAnthropic(
+        [
+            _response(
+                [
+                    _tool_use(
+                        "t1",
+                        "save_meal_plan",
+                        {
+                            "week_start": "2026-05-04",
+                            "meals": [
+                                {
+                                    # 05-04 war angefragt, Agent speichert 05-05
+                                    "date": "2026-05-05",
+                                    "slot": "lunch",
+                                    "title": "Mahlzeit falsches Datum",
+                                    "instructions": "Kochen.",
+                                    "prep_time_min": 10,
+                                    "ingredients": [{"product_id": quinoa_id, "grams": 80}],
+                                }
+                            ],
+                        },
+                    )
+                ],
+                stop_reason="tool_use",
+            ),
+            _response([_text("Gespeichert.")], stop_reason="end_turn"),
+        ]
+    )
+
+    agent = MealAgent(client=fake, db=db, model="test-model")
+    with pytest.raises(AgentPlanningError, match="nicht angeforderten Slot"):
+        agent.generate_plan(
+            PlanRequest(week_start=date(2026, 5, 4), slots=[(date(2026, 5, 4), "lunch")])
+        )

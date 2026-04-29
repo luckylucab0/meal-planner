@@ -1,8 +1,10 @@
 # Web-Framework
-fastapi==0.115.0
+# fastapi>=0.115.6 zieht starlette>=0.47.2, schliesst CVE-2024-47874 / CVE-2025-54121
+fastapi>=0.115.6,<0.116
 uvicorn[standard]==0.30.6
 pydantic==2.9.2
 pydantic-settings==2.5.2
+starlette>=0.41.3,<0.42
 
 # Datenbank
 sqlalchemy==2.0.35
@@ -22,15 +24,19 @@ icalendar==6.1.0
 caldav==1.4.0
 
 # Crypto (CalDAV-Credentials)
-cryptography==43.0.1
+# >=46.0.0 schliesst CVE-2024-12797, CVE-2026-26007, CVE-2026-34073
+cryptography>=46.0.0,<47
 
 # Logging
 loguru==0.7.2
 
+# Rate-Limiting
+slowapi==0.1.9
+
 # Test/Lint (Dev)
-pytest==8.3.3
-pytest-asyncio==0.24.0
+pytest>=9.0.3
+pytest-asyncio>=0.25.0
 respx==0.21.1
 ruff==0.6.9
 mypy==1.11.2
-black==24.10.0
+black>=26.1.0

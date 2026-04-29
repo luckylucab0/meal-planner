@@ -2,6 +2,7 @@
 .env
 .env.local
 *.key
+frontend/nginx.htpasswd
 
 # Daten-Volumes (zur Laufzeit befüllt)
 data/db/*

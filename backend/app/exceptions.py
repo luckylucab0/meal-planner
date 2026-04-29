@@ -18,3 +18,11 @@ class OpenFoodFactsError(MealPlannerError):
 
 class CalDavSyncError(MealPlannerError):
     """Fehler beim Synchronisieren mit dem CalDAV-Server."""
+
+
+class EncryptionNotConfiguredError(MealPlannerError):
+    """ENCRYPTION_KEY fehlt oder ist ungültig."""
+
+
+class DecryptionError(MealPlannerError):
+    """Entschlüsselung der gespeicherten Credentials fehlgeschlagen."""

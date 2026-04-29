@@ -13,6 +13,8 @@ from typing import AsyncIterator
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from loguru import logger
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from app.api import calendar as calendar_api
 from app.api import plans as plans_api
@@ -22,8 +24,16 @@ from app.api import settings as settings_api
 from app.api import shopping_list as shopping_list_api
 from app.api import stats as stats_api
 from app.config import settings
-from app.exceptions import MealPlannerError
+from app.exceptions import (
+    AgentPlanningError,
+    CalDavSyncError,
+    DecryptionError,
+    EncryptionNotConfiguredError,
+    MealPlannerError,
+    OpenFoodFactsError,
+)
 from app.logging_setup import setup_logging
+from app.rate_limit import limiter
 from app.scheduler import make_scheduler
 
 
@@ -32,6 +42,10 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     """App-Lifecycle — Logging + Scheduler beim Start, sauberes Shutdown am Ende."""
     setup_logging()
     logger.info("Meal Planner Backend startet (db={})", settings.database_url)
+    if not settings.encryption_key:
+        logger.warning(
+            "ENCRYPTION_KEY ist nicht gesetzt — CalDAV-Sync nicht nutzbar."
+        )
     scheduler = make_scheduler()
     scheduler.start()
     try:
@@ -43,13 +57,30 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title="Meal Planner", version="0.1.0", lifespan=lifespan)
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+_STATUS_BY_CLASS: dict[type[MealPlannerError], int] = {
+    AgentPlanningError: 502,
+    OpenFoodFactsError: 502,
+    CalDavSyncError: 502,
+    EncryptionNotConfiguredError: 500,
+    DecryptionError: 500,
+}
+
 
 @app.exception_handler(MealPlannerError)
 async def domain_error_handler(_request: Request, exc: MealPlannerError) -> JSONResponse:
-    """Wandelt Domain-Exceptions in saubere 4xx/5xx-Antworten."""
-    logger.warning("Domain-Fehler: {}", exc)
+    """Wandelt Domain-Exceptions in saubere HTTP-Statuscodes um.
+
+    Jede Exception-Klasse hat einen semantisch passenden Code — Upstream-Fehler
+    (Agent, OFF, CalDAV) → 502, Konfig-Fehler → 500, sonstige Domain-Fehler → 400.
+    """
+    status_code = _STATUS_BY_CLASS.get(type(exc), 400)
+    logger.warning("Domain-Fehler ({}): {}", status_code, exc)
     return JSONResponse(
-        status_code=400,
+        status_code=status_code,
         content={"error": exc.__class__.__name__, "detail": str(exc)},
     )
 
