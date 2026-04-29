@@ -1,0 +1,41 @@
+# Secrets
+.env
+.env.local
+*.key
+
+# Daten-Volumes (zur Laufzeit befüllt)
+data/db/*
+!data/db/.gitkeep
+data/logs/*
+!data/logs/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+.coverage
+htmlcov/
+
+# Node / Vite
+node_modules/
+dist/
+.vite/
+*.log
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Claude Code (maschinenspezifisch)
+.claude/settings.local.json
+
+# Docker
+*.pid

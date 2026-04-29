@@ -1,0 +1,19 @@
+services:
+  backend:
+    build: ./backend
+    platform: linux/arm64
+    env_file: .env
+    volumes:
+      - ./data:/data
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    platform: linux/arm64
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
