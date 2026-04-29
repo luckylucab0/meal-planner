@@ -98,6 +98,10 @@ htpasswd -B -c frontend/nginx.htpasswd DEIN_USERNAME
 ### 4. Stack starten
 
 ```bash
+# Daten-Verzeichnis mit korrekten Permissions anlegen (UID 1000 = appuser im Container)
+mkdir -p data/db data/logs
+chown -R 1000:1000 data/
+
 docker compose up -d --build
 ```
 

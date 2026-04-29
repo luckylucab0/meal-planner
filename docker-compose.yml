@@ -8,6 +8,10 @@ services:
     # Kein ports:-Block — Backend ist nur über das Docker-interne Netz
     # erreichbar (frontend → backend:8000). Direktzugriff von aussen
     # ist nicht mehr möglich; alle Anfragen laufen durch nginx/Basic-Auth.
+    # init:true sorgt für sauberes Signal-Handling bei appuser (kein PID 1 Problem).
+    # Volume-Permissions beim ersten Start sicherstellen:
+    #   mkdir -p data/db data/logs && chown -R 1000:1000 data/
+    init: true
     restart: unless-stopped
 
   frontend:

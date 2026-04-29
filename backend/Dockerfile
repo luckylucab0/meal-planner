@@ -19,6 +19,13 @@ RUN pip install --no-cache-dir --upgrade pip \
 
 COPY . .
 
+# Non-Root reduziert Blast-Radius bei RCE: ein Angreifer landet als
+# unprivilegierter User, nicht als root im Container.
+RUN useradd --system --uid 1000 --no-create-home appuser \
+ && mkdir -p /data/db /data/logs \
+ && chown -R appuser:appuser /app /data
+USER appuser
+
 EXPOSE 8000
 
 # Beim Container-Start: erst Migration applien (idempotent), dann Server.
