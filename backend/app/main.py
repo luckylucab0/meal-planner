@@ -24,15 +24,21 @@ from app.api import stats as stats_api
 from app.config import settings
 from app.exceptions import MealPlannerError
 from app.logging_setup import setup_logging
+from app.scheduler import make_scheduler
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-    """App-Lifecycle — Logging beim Start, Cleanup beim Stop."""
+    """App-Lifecycle — Logging + Scheduler beim Start, sauberes Shutdown am Ende."""
     setup_logging()
     logger.info("Meal Planner Backend startet (db={})", settings.database_url)
-    yield
-    logger.info("Meal Planner Backend wird beendet.")
+    scheduler = make_scheduler()
+    scheduler.start()
+    try:
+        yield
+    finally:
+        scheduler.shutdown(wait=False)
+        logger.info("Meal Planner Backend wird beendet.")
 
 
 app = FastAPI(title="Meal Planner", version="0.1.0", lifespan=lifespan)
