@@ -24,7 +24,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.exceptions import AgentPlanningError, OpenFoodFactsError
+from app.exceptions import AgentPlanningError
 from app.models import (
     Meal,
     MealHistory,
@@ -59,13 +59,12 @@ Vorgehen:
 1. Lade zuerst die User-Vorlieben mit `get_user_preferences`.
 2. Optional: prüfe `get_recent_meal_history`, um Wiederholungen zu vermeiden.
 3. Plane die angefragten Mahlzeiten. Für jede Zutat:
-   - rufe `lookup_product` auf (lokal-first, fällt auf Open Food Facts zurück);
-   - **Wichtig:** wenn `lookup_product` `found: false` ODER
-     `source_resolved: "unavailable"` (Open Food Facts gerade down) liefert,
+   - rufe `lookup_product` auf (prüft lokale Datenbank);
+   - **Wichtig:** wenn `lookup_product` `found: false` liefert,
      rufe **sofort** im selben Turn `upsert_product` mit deinen eigenen
-     Makro-Werten auf. Niemals stehenbleiben oder den Loop abbrechen, nur
-     weil OFF nicht antwortet — du hast genug Ernährungswissen, um
-     realistische kcal/Protein/Carbs/Fett-Werte pro 100 g zu schätzen.
+     Makro-Werten auf. Du hast genug Ernährungswissen, um realistische
+     kcal/Protein/Carbs/Fett-Werte pro 100 g zu schätzen — nutze dieses
+     Wissen direkt und zuverlässig.
 4. Pro Mahlzeit: rufe `calculate_nutrition` auf, um die Makros zu validieren.
 5. Wenn alle Mahlzeiten geplant sind, rufe **einmal** `save_meal_plan` mit
    der vollständigen Struktur auf.
@@ -111,8 +110,9 @@ TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "name": "lookup_product",
         "description": (
-            "Schlägt eine Zutat nach. Strategie: lokale DB → Open Food Facts → Cache. "
-            "Liefert product_id und Makros pro 100 g."
+            "Schlägt eine Zutat in der lokalen Datenbank nach. "
+            "Liefert product_id und Makros pro 100 g, falls bereits bekannt. "
+            "Bei `found: false` sofort `upsert_product` mit eigenen Makro-Schätzungen aufrufen."
         ),
         "input_schema": {
             "type": "object",
@@ -394,37 +394,16 @@ class MealAgent:
 
     def _tool_lookup_product(self, args: dict[str, Any]) -> dict[str, Any]:
         name = str(args["name"])
-        try:
-            product, source = openfoodfacts.lookup_or_fetch(self.db, name)
-        except OpenFoodFactsError as exc:
-            # OFF kann transient down sein — wir liefern dem Agent einen
-            # strukturierten "unavailable"-Hinweis statt eines Error-Strings,
-            # damit er auf `upsert_product` umsteigt statt die Tour aufzugeben.
-            logger.info("lookup_product: OFF nicht verfügbar für '{}', upsert empfohlen.", name)
-            return {
-                "found": False,
-                "name": name,
-                "source_resolved": "unavailable",
-                "hint": (
-                    "Open Food Facts ist nicht erreichbar. Lege die Zutat "
-                    "JETZT mit `upsert_product` selbst an (Makros aus deinem "
-                    "Wissen)."
-                ),
-                "off_error": str(exc),
-            }
+        product = openfoodfacts.find_local(self.db, name)
         if product is None:
             return {
                 "found": False,
                 "name": name,
-                "source_resolved": source,
-                "hint": (
-                    "Weder lokal noch in OFF gefunden. Lege die Zutat mit "
-                    "`upsert_product` an."
-                ),
+                "hint": "Nicht in lokaler DB. Sofort `upsert_product` aufrufen.",
             }
         return {
             "found": True,
-            "source_resolved": source,
+            "source_resolved": "local",
             "product": _product_summary(product),
         }
 
