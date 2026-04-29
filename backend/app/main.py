@@ -1,12 +1,44 @@
 """FastAPI-Einstiegspunkt.
 
-Bündelt alle Router unter `/api` und stellt einen Health-Endpoint bereit.
-Echte Implementierung folgt schrittweise (siehe Plan).
+Initialisiert Logging, registriert Exception-Handler für Domain-Fehler und
+exponiert einen Health-Endpoint. Router (preferences, plans, products, …)
+werden in den nachfolgenden Implementierungs-Schritten registriert.
 """
 
-from fastapi import FastAPI
+from __future__ import annotations
 
-app = FastAPI(title="Meal Planner", version="0.1.0")
+from contextlib import asynccontextmanager
+from typing import AsyncIterator
+
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from loguru import logger
+
+from app.config import settings
+from app.exceptions import MealPlannerError
+from app.logging_setup import setup_logging
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    """App-Lifecycle — Logging beim Start, Cleanup beim Stop."""
+    setup_logging()
+    logger.info("Meal Planner Backend startet (db={})", settings.database_url)
+    yield
+    logger.info("Meal Planner Backend wird beendet.")
+
+
+app = FastAPI(title="Meal Planner", version="0.1.0", lifespan=lifespan)
+
+
+@app.exception_handler(MealPlannerError)
+async def domain_error_handler(_request: Request, exc: MealPlannerError) -> JSONResponse:
+    """Wandelt Domain-Exceptions in saubere 4xx/5xx-Antworten."""
+    logger.warning("Domain-Fehler: {}", exc)
+    return JSONResponse(
+        status_code=400,
+        content={"error": exc.__class__.__name__, "detail": str(exc)},
+    )
 
 
 @app.get("/api/health")
