@@ -5,15 +5,19 @@ services:
     env_file: .env
     volumes:
       - ./data:/data
-    ports:
-      - "8000:8000"
+    # Kein ports:-Block — Backend ist nur über das Docker-interne Netz
+    # erreichbar (frontend → backend:8000). Direktzugriff von aussen
+    # ist nicht mehr möglich; alle Anfragen laufen durch nginx/Basic-Auth.
     restart: unless-stopped
 
   frontend:
     build: ./frontend
     platform: linux/arm64
+    # 127.0.0.1 bindet nur auf localhost des Pi — kein direkter LAN-Zugriff
+    # auf den Docker-Port. Für LAN-Zugriff auf "0.0.0.0:3000:80" ändern
+    # (dann ist Basic-Auth der einzige Schutz).
     ports:
-      - "3000:80"
+      - "127.0.0.1:3000:80"
     depends_on:
       - backend
     restart: unless-stopped
