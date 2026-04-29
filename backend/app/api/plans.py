@@ -145,7 +145,7 @@ def get_current_plan(db: Session = Depends(get_db)) -> PlanRead | None:
 
 
 @router.get("/week/{week_start}", response_model=PlanRead | None)
-def get_plan_by_week(week_start: date, db: Session = Depends(get_db)) -> PlanRead | None:
+def get_plan_by_week(week_start: date_type, db: Session = Depends(get_db)) -> PlanRead | None:
     plan = db.scalars(
         select(MealPlan)
         .where(MealPlan.week_start == week_start)
