@@ -1,6 +1,7 @@
 import { NavLink, Route, Routes } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import Preferences from "./pages/Preferences";
+import Products from "./pages/Products";
 import WeekPlan from "./pages/WeekPlan";
 import ShoppingList from "./pages/ShoppingList";
 import History from "./pages/History";
@@ -11,6 +12,7 @@ const navItems = [
   { to: "/plan", label: "Wochenplan" },
   { to: "/shopping", label: "Einkaufsliste" },
   { to: "/preferences", label: "Vorlieben" },
+  { to: "/products", label: "Zutaten" },
   { to: "/history", label: "Historie" },
   { to: "/settings", label: "Einstellungen" },
 ];
@@ -44,6 +46,7 @@ export default function App() {
           <Route path="/plan" element={<WeekPlan />} />
           <Route path="/shopping" element={<ShoppingList />} />
           <Route path="/preferences" element={<Preferences />} />
+          <Route path="/products" element={<Products />} />
           <Route path="/history" element={<History />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>
