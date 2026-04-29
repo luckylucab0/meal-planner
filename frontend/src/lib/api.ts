@@ -164,6 +164,9 @@ export const generatePlan = (payload: PlanGenerateRequest) =>
 
 export const getCurrentPlan = () => apiFetch<PlanRead | null>("/api/plans/current");
 
+export const getPlanByWeek = (weekStart: string) =>
+  apiFetch<PlanRead | null>(`/api/plans/week/${weekStart}`);
+
 export const getPlan = (id: number) => apiFetch<PlanRead>(`/api/plans/${id}`);
 
 export const listPlanHistory = (limit = 10) =>

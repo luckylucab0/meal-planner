@@ -144,6 +144,20 @@ def get_current_plan(db: Session = Depends(get_db)) -> PlanRead | None:
     return _plan_to_read(db, plan)
 
 
+@router.get("/week/{week_start}", response_model=PlanRead | None)
+def get_plan_by_week(week_start: date, db: Session = Depends(get_db)) -> PlanRead | None:
+    plan = db.scalars(
+        select(MealPlan)
+        .where(MealPlan.week_start == week_start)
+        .order_by(MealPlan.generated_at.desc())
+        .options(selectinload(MealPlan.meals).selectinload(Meal.ingredients))
+        .limit(1)
+    ).one_or_none()
+    if plan is None:
+        return None
+    return _plan_to_read(db, plan)
+
+
 @router.get("/history", response_model=list[PlanSummary])
 def list_plans(
     db: Session = Depends(get_db), limit: int = Query(default=10, ge=1, le=100)

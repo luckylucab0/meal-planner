@@ -2,20 +2,47 @@
 // Detail-Modal. Über "Neuen Plan generieren" startet der Agent-Loop.
 
 import { useEffect, useState } from "react";
-import { getCurrentPlan, planIcsUrl, type MealRead, type PlanRead } from "../lib/api";
-import { addDays, formatGerman, parseISODate, toISODate, WEEKDAYS } from "../lib/dates";
+import { getCurrentPlan, getPlanByWeek, planIcsUrl, type MealRead, type PlanRead } from "../lib/api";
+import { addDays, formatGerman, mondayOf, parseISODate, toISODate, WEEKDAYS } from "../lib/dates";
 import GeneratePlanModal from "../components/GeneratePlanModal";
 import MealDetailModal from "../components/MealDetailModal";
 
+function thisMonday(): string {
+  return toISODate(mondayOf(new Date()));
+}
+
 export default function WeekPlan() {
   const [plan, setPlan] = useState<PlanRead | null>(null);
+  const [weekStart, setWeekStart] = useState<string>(thisMonday());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [genOpen, setGenOpen] = useState(false);
   const [activeMeal, setActiveMeal] = useState<MealRead | null>(null);
+  const [initialised, setInitialised] = useState(false);
 
-  const refresh = () =>
+  // On first load: fetch the most recent plan and jump to its week.
+  useEffect(() => {
     getCurrentPlan()
+      .then((p) => {
+        if (p) {
+          setPlan(p);
+          setWeekStart(p.week_start);
+        }
+        setLoading(false);
+        setInitialised(true);
+      })
+      .catch((e) => {
+        setError(String(e));
+        setLoading(false);
+        setInitialised(true);
+      });
+  }, []);
+
+  // Whenever weekStart changes (after initialisation), fetch that week's plan.
+  useEffect(() => {
+    if (!initialised) return;
+    setLoading(true);
+    getPlanByWeek(weekStart)
       .then((p) => {
         setPlan(p);
         setLoading(false);
@@ -24,12 +51,15 @@ export default function WeekPlan() {
         setError(String(e));
         setLoading(false);
       });
+  }, [weekStart, initialised]);
 
-  useEffect(() => {
-    refresh();
-  }, []);
+  const navigate = (delta: number) => {
+    const d = parseISODate(weekStart);
+    d.setDate(d.getDate() + delta * 7);
+    setWeekStart(toISODate(d));
+  };
 
-  if (loading) return <p className="text-neutral-500">Lade…</p>;
+  if (loading && !initialised) return <p className="text-neutral-500">Lade…</p>;
 
   return (
     <section>
@@ -64,22 +94,53 @@ export default function WeekPlan() {
         </div>
       </div>
 
+      {/* Wochennavigation */}
+      <div className="mt-4 flex items-center gap-3">
+        <button
+          onClick={() => navigate(-1)}
+          className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+        >
+          ← Vorherige
+        </button>
+        <span className="text-sm font-medium">
+          {formatGerman(weekStart)} – {formatGerman(toISODate(addDays(parseISODate(weekStart), 6)))}
+        </span>
+        <button
+          onClick={() => navigate(+1)}
+          className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+        >
+          Nächste →
+        </button>
+        {weekStart !== thisMonday() && (
+          <button
+            onClick={() => setWeekStart(thisMonday())}
+            className="text-sm text-emerald-600 hover:underline"
+          >
+            Heute
+          </button>
+        )}
+      </div>
+
       {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
 
-      {!plan && (
+      {loading && <p className="mt-4 text-sm text-neutral-500">Lade…</p>}
+
+      {!loading && !plan && (
         <p className="mt-6 rounded-md border border-dashed border-neutral-300 bg-neutral-50 p-8 text-center text-neutral-500 dark:border-neutral-700 dark:bg-neutral-900">
-          Noch kein Plan vorhanden. Klick oben rechts auf „Neuen Plan generieren".
+          Für diese Woche noch kein Plan vorhanden. Klick auf „Neuen Plan generieren".
         </p>
       )}
 
-      {plan && <PlanGrid plan={plan} onMealClick={setActiveMeal} />}
+      {plan && !loading && plan.week_start === weekStart && (
+        <PlanGrid plan={plan} onMealClick={setActiveMeal} />
+      )}
 
       <GeneratePlanModal
         open={genOpen}
         onClose={() => setGenOpen(false)}
         onGenerated={(p) => {
           setPlan(p);
-          refresh();
+          setWeekStart(p.week_start);
         }}
       />
       <MealDetailModal
@@ -89,7 +150,7 @@ export default function WeekPlan() {
         meal={activeMeal}
         onUpdated={(updated) => {
           setActiveMeal(updated);
-          refresh();
+          getPlanByWeek(weekStart).then((p) => setPlan(p));
         }}
       />
     </section>
