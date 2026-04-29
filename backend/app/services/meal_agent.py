@@ -24,7 +24,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.exceptions import AgentPlanningError
+from app.exceptions import AgentPlanningError, OpenFoodFactsError
 from app.models import (
     Meal,
     MealHistory,
@@ -60,12 +60,21 @@ Vorgehen:
 2. Optional: prüfe `get_recent_meal_history`, um Wiederholungen zu vermeiden.
 3. Plane die angefragten Mahlzeiten. Für jede Zutat:
    - rufe `lookup_product` auf (lokal-first, fällt auf Open Food Facts zurück);
-   - wenn weder lokal noch OFF etwas finden, lege die Zutat mit
-     `upsert_product` selbst an (gib realistische Makros pro 100 g
-     basierend auf deinem Wissen).
+   - **Wichtig:** wenn `lookup_product` `found: false` ODER
+     `source_resolved: "unavailable"` (Open Food Facts gerade down) liefert,
+     rufe **sofort** im selben Turn `upsert_product` mit deinen eigenen
+     Makro-Werten auf. Niemals stehenbleiben oder den Loop abbrechen, nur
+     weil OFF nicht antwortet — du hast genug Ernährungswissen, um
+     realistische kcal/Protein/Carbs/Fett-Werte pro 100 g zu schätzen.
 4. Pro Mahlzeit: rufe `calculate_nutrition` auf, um die Makros zu validieren.
 5. Wenn alle Mahlzeiten geplant sind, rufe **einmal** `save_meal_plan` mit
    der vollständigen Struktur auf.
+
+**Verbindliche Endbedingung:** Du bist erst fertig, wenn `save_meal_plan`
+erfolgreich durchgelaufen ist (du erhältst eine `plan_id` zurück). Beende
+den Loop NICHT mit einer reinen Text-Antwort, ausser bei einem echten,
+nicht behebbaren Konflikt (z.B. Whitelist und Blacklist sind direkt
+widersprüchlich); in dem Fall: kurze Erklärung, dann Stop.
 
 Qualitätskriterien:
 - Halte das Kalorien-Ziel pro Tag mit Toleranz ±15 % ein.
@@ -270,7 +279,9 @@ class MealAgent:
             messages.append({"role": "assistant", "content": [_block_to_dict(b) for b in content]})
 
             if stop_reason != "tool_use":
-                logger.debug("Agent fertig nach {} Turns (stop_reason={}).", turn + 1, stop_reason)
+                logger.info(
+                    "Agent fertig nach {} Turns (stop_reason={}).", turn + 1, stop_reason
+                )
                 break
 
             tool_results = []
@@ -292,8 +303,21 @@ class MealAgent:
             )
 
         if self._saved_plan_id is None:
+            # Letzter Text-Block des Agents in die Fehlermeldung mitnehmen,
+            # damit das Frontend zeigen kann, was er sagen wollte.
+            last_text = ""
+            for msg in reversed(messages):
+                if msg.get("role") != "assistant":
+                    continue
+                for block in msg.get("content", []):
+                    if isinstance(block, dict) and block.get("type") == "text":
+                        last_text = str(block.get("text", "")).strip()
+                        break
+                if last_text:
+                    break
+            extra = f' Agent-Antwort: „{last_text[:400]}…"' if last_text else ""
             raise AgentPlanningError(
-                "Agent hat den Loop beendet, aber `save_meal_plan` nie aufgerufen."
+                f"Agent hat den Loop beendet, aber `save_meal_plan` nie aufgerufen.{extra}"
             )
         return self._saved_plan_id
 
@@ -370,9 +394,34 @@ class MealAgent:
 
     def _tool_lookup_product(self, args: dict[str, Any]) -> dict[str, Any]:
         name = str(args["name"])
-        product, source = openfoodfacts.lookup_or_fetch(self.db, name)
+        try:
+            product, source = openfoodfacts.lookup_or_fetch(self.db, name)
+        except OpenFoodFactsError as exc:
+            # OFF kann transient down sein — wir liefern dem Agent einen
+            # strukturierten "unavailable"-Hinweis statt eines Error-Strings,
+            # damit er auf `upsert_product` umsteigt statt die Tour aufzugeben.
+            logger.info("lookup_product: OFF nicht verfügbar für '{}', upsert empfohlen.", name)
+            return {
+                "found": False,
+                "name": name,
+                "source_resolved": "unavailable",
+                "hint": (
+                    "Open Food Facts ist nicht erreichbar. Lege die Zutat "
+                    "JETZT mit `upsert_product` selbst an (Makros aus deinem "
+                    "Wissen)."
+                ),
+                "off_error": str(exc),
+            }
         if product is None:
-            return {"found": False, "name": name, "source_resolved": source}
+            return {
+                "found": False,
+                "name": name,
+                "source_resolved": source,
+                "hint": (
+                    "Weder lokal noch in OFF gefunden. Lege die Zutat mit "
+                    "`upsert_product` an."
+                ),
+            }
         return {
             "found": True,
             "source_resolved": source,
