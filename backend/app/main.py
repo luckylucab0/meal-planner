@@ -14,6 +14,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from loguru import logger
 
+from app.api import calendar as calendar_api
 from app.api import plans as plans_api
 from app.api import preferences as preferences_api
 from app.api import products as products_api
@@ -51,6 +52,7 @@ app.include_router(products_api.router)
 app.include_router(plans_api.router)
 app.include_router(shopping_list_api.router)
 app.include_router(stats_api.router)
+app.include_router(calendar_api.router)
 
 
 @app.get("/api/health")

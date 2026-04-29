@@ -232,3 +232,7 @@ export const getMacrosRange = (from?: string, to?: string) => {
   const qs = params.toString();
   return apiFetch<MacrosRange>(`/api/stats/macros${qs ? "?" + qs : ""}`);
 };
+
+// ───── Calendar ────────────────────────────────────────────────────────────
+
+export const planIcsUrl = (planId: number) => `/api/calendar/${planId}.ics`;

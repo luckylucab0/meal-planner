@@ -2,7 +2,7 @@
 // Detail-Modal. Über "Neuen Plan generieren" startet der Agent-Loop.
 
 import { useEffect, useState } from "react";
-import { getCurrentPlan, type MealRead, type PlanRead } from "../lib/api";
+import { getCurrentPlan, planIcsUrl, type MealRead, type PlanRead } from "../lib/api";
 import { addDays, formatGerman, parseISODate, toISODate, WEEKDAYS } from "../lib/dates";
 import GeneratePlanModal from "../components/GeneratePlanModal";
 import MealDetailModal from "../components/MealDetailModal";
@@ -46,12 +46,22 @@ export default function WeekPlan() {
             </p>
           )}
         </div>
-        <button
-          onClick={() => setGenOpen(true)}
-          className="rounded-md bg-emerald-600 px-3 py-2 text-sm text-white hover:bg-emerald-700"
-        >
-          Neuen Plan generieren
-        </button>
+        <div className="flex gap-2">
+          {plan && (
+            <a
+              href={planIcsUrl(plan.id)}
+              className="rounded-md border border-neutral-300 px-3 py-2 text-sm hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800"
+            >
+              ↓ .ics
+            </a>
+          )}
+          <button
+            onClick={() => setGenOpen(true)}
+            className="rounded-md bg-emerald-600 px-3 py-2 text-sm text-white hover:bg-emerald-700"
+          >
+            Neuen Plan generieren
+          </button>
+        </div>
       </div>
 
       {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
