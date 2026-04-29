@@ -135,7 +135,7 @@ def generate_plan(payload: PlanGenerateRequest, db: Session = Depends(get_db)) -
 def get_current_plan(db: Session = Depends(get_db)) -> PlanRead | None:
     plan = db.scalars(
         select(MealPlan)
-        .order_by(MealPlan.week_start.desc(), MealPlan.generated_at.desc())
+        .order_by(MealPlan.generated_at.desc())
         .options(selectinload(MealPlan.meals).selectinload(Meal.ingredients))
         .limit(1)
     ).one_or_none()
