@@ -1,0 +1,34 @@
+name: Security Audit
+
+on:
+  pull_request:
+  schedule:
+    # Jeden Montag 07:00 UTC — frühzeitige Warnung bei neu publizierten CVEs.
+    - cron: "0 7 * * 1"
+
+jobs:
+  pip-audit:
+    name: Python Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: pip-audit installieren
+        run: pip install pip-audit
+      - name: Backend-Dependencies auf CVEs prüfen
+        run: pip-audit -r backend/requirements.txt --strict
+
+  npm-audit:
+    name: npm Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Frontend-Dependencies installieren
+        run: npm --prefix frontend ci
+      - name: npm audit (high+critical)
+        run: npm --prefix frontend audit --audit-level=high
