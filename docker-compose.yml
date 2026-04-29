@@ -17,11 +17,10 @@ services:
   frontend:
     build: ./frontend
     platform: linux/arm64
-    # 127.0.0.1 bindet nur auf localhost des Pi — kein direkter LAN-Zugriff
-    # auf den Docker-Port. Für LAN-Zugriff auf "0.0.0.0:3000:80" ändern
-    # (dann ist Basic-Auth der einzige Schutz).
+    # 0.0.0.0 macht den Port im LAN erreichbar — Basic-Auth ist der Schutz.
+    # Für reinen Localhost-Betrieb auf "127.0.0.1:3000:80" ändern.
     ports:
-      - "127.0.0.1:3000:80"
+      - "0.0.0.0:3000:80"
     depends_on:
       - backend
     restart: unless-stopped

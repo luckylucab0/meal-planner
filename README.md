@@ -83,13 +83,23 @@ nginx schützt die gesamte App mit HTTP Basic Auth. Die Datei muss vor
 dem ersten Build vorhanden sein:
 
 ```bash
-# apache2-utils / httpd-tools installieren (einmalig)
-sudo apt-get install -y apache2-utils   # Debian/Ubuntu
-# oder: sudo yum install -y httpd-tools  # RHEL/Fedora
+# apache2-utils installieren (einmalig, auf dem Pi oder lokal)
+sudo apt-get install -y apache2-utils
 
-# .htpasswd mit bcrypt erstellen (-B)
+# .htpasswd mit bcrypt erzeugen (-B)
 htpasswd -B -c frontend/nginx.htpasswd DEIN_USERNAME
-# Passwort wird interaktiv abgefragt; Datei landet lokal, nicht im Repo.
+# Passwort wird interaktiv abgefragt. Die Datei liegt lokal und ist via
+# .gitignore vom Repo ausgeschlossen.
+```
+
+Alternativ mit Python (kein `htpasswd` nötig):
+
+```bash
+python3 -c "
+import bcrypt, getpass
+pw = getpass.getpass('Passwort: ').encode()
+print('DEIN_USERNAME:' + bcrypt.hashpw(pw, bcrypt.gensalt(12)).decode())
+" > frontend/nginx.htpasswd
 ```
 
 > Das Backend ist **nicht** mehr direkt über Port 8000 erreichbar —
